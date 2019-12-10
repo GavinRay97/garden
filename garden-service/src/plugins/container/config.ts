@@ -17,8 +17,8 @@ import {
   joi,
   envVarRegex,
   Primitive,
-  ArtifactSpec,
 } from "../../config/common"
+import { ArtifactSpec } from "./../../config/validation"
 import { Service, ingressHostnameSchema, linkUrlSchema } from "../../types/service"
 import { DEFAULT_PORT_PROTOCOL } from "../../constants"
 import { ModuleSpec, ModuleConfig, baseBuildSpecSchema, BaseBuildSpec } from "../../config/module"

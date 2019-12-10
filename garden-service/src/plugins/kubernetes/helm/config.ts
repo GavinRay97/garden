@@ -9,15 +9,8 @@
 import { find } from "lodash"
 
 import { ServiceSpec } from "../../../config/service"
-import {
-  joiPrimitive,
-  joiArray,
-  joiIdentifier,
-  joiUserIdentifier,
-  DeepPrimitiveMap,
-  joi,
-  ArtifactSpec,
-} from "../../../config/common"
+import { joiPrimitive, joiArray, joiIdentifier, joiUserIdentifier, DeepPrimitiveMap, joi } from "../../../config/common"
+import { ArtifactSpec } from "../../../config/validation"
 import { Module, FileCopySpec } from "../../../types/module"
 import { containsSource, getReleaseName } from "./common"
 import { ConfigurationError } from "../../../exceptions"
