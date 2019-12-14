@@ -11,7 +11,8 @@ services:
       ENV_VAR: foo
 tasks:
   - name: echo-task
-    command: [sh, -c, "echo ok"]
+    # The sleep is to make sure we catch the logs
+    command: [sh, -c, "sleep 1.0 && echo ok"]
   - name: artifacts-task
     command: [sh, -c, "touch /task.txt"]
     artifacts:
@@ -31,7 +32,8 @@ tasks:
         target: my-task-report
 tests:
   - name: echo-test
-    command: [sh, -c, "echo ok"]
+    # The sleep is to make sure we catch the logs
+    command: [sh, -c, "sleep 1.0 && echo ok"]
   - name: artifacts-test
     command: [sh, -c, "touch /test.txt"]
     artifacts:

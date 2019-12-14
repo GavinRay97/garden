@@ -216,11 +216,12 @@ export function spawn(cmd: string, args: string[], opts: SpawnOpts = {}) {
     // We ensure the output strings never exceed the MAX_BUFFER_SIZE
     proc.stdout!.on("data", (s) => {
       result.output = tailString(result.output + s, MAX_BUFFER_SIZE, true)
-      result.stdout! = tailString(result.stdout! + s, MAX_BUFFER_SIZE, true)
+      result.stdout = tailString(result.stdout + s, MAX_BUFFER_SIZE, true)
     })
 
     proc.stderr!.on("data", (s) => {
-      result.stderr! = tailString(result.stderr! + s, MAX_BUFFER_SIZE, true)
+      result.output = tailString(result.output + s, MAX_BUFFER_SIZE, true)
+      result.stderr = tailString(result.stderr + s, MAX_BUFFER_SIZE, true)
     })
 
     stdout && proc.stdout!.pipe(stdout)
@@ -273,7 +274,7 @@ export function spawn(cmd: string, args: string[], opts: SpawnOpts = {}) {
           code,
           cmd,
           args,
-          output: result.output + result.stderr,
+          output: result.output,
           error: result.stderr || "",
         })
         _reject(new RuntimeError(msg, { cmd, args, opts, result }))

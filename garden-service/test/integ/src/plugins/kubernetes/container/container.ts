@@ -57,7 +57,7 @@ describe("kubernetes container module handlers", () => {
       result = await runAndCopy({
         ctx: garden.getPluginContext(provider),
         log: garden.log,
-        command: ["sh", "-c", "echo ok"],
+        command: ["sh", "-c", "sleep 1.0 && echo ok"],
         args: [],
         interactive: false,
         module,
@@ -304,6 +304,9 @@ describe("kubernetes container module handlers", () => {
         interactive: false,
         runtimeContext,
       })
+
+      // tslint:disable-next-line: no-console
+      console.log(runtimeContext)
 
       expect(result.log.trim()).to.eql("foo")
     })
