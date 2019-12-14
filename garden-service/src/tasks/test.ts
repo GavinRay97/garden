@@ -8,7 +8,7 @@
 
 import Bluebird from "bluebird"
 import chalk from "chalk"
-import { find } from "lodash"
+import { find, flatten } from "lodash"
 import minimatch = require("minimatch")
 
 import { Module } from "../types/module"
@@ -75,12 +75,16 @@ export class TestTask extends BaseTask {
     const dg = this.graph
     const deps = await dg.getDependencies("test", this.getName(), false)
 
-    const buildTasks = await BuildTask.factory({
-      garden: this.garden,
-      log: this.log,
-      module: this.module,
-      force: this.forceBuild,
-    })
+    const buildTasks = flatten(
+      await Bluebird.map(deps.build, (module) => {
+        return BuildTask.factory({
+          garden: this.garden,
+          log: this.log,
+          module,
+          force: this.forceBuild,
+        })
+      })
+    )
 
     const taskTasks = await Bluebird.map(deps.run, (task) => {
       return TaskTask.factory({

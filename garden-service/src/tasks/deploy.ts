@@ -8,7 +8,7 @@
 
 import Bluebird from "bluebird"
 import chalk from "chalk"
-import { includes } from "lodash"
+import { includes, flatten } from "lodash"
 import { LogEntry } from "../logger/log-entry"
 import { BaseTask, TaskType, getServiceStatuses, getRunTaskResults } from "./base"
 import { Service, ServiceStatus, getLinkUrl } from "../types/service"
@@ -129,14 +129,16 @@ export class DeployTask extends BaseTask {
         })
       })
 
-      const buildTasks = await BuildTask.factory({
-        garden: this.garden,
-        log: this.log,
-        module: this.service.module,
-        force: this.forceBuild,
-        fromWatch: this.fromWatch,
-        hotReloadServiceNames: this.hotReloadServiceNames,
-      })
+      const buildTasks = flatten(
+        await Bluebird.map(deps.build, (module) => {
+          return BuildTask.factory({
+            garden: this.garden,
+            log: this.log,
+            module,
+            force: this.forceBuild,
+          })
+        })
+      )
 
       return [statusTask, ...deployTasks, ...taskTasks, ...buildTasks]
     }

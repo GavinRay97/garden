@@ -20,6 +20,7 @@ import { BuildTask } from "./build"
 import { RunTaskResult } from "../types/plugin/task/runTask"
 import { TaskResults } from "../task-graph"
 import { GetTaskResultTask } from "./get-task-result"
+import { flatten } from "lodash"
 
 export interface TaskTaskParams {
   garden: Garden
@@ -53,15 +54,19 @@ export class TaskTask extends BaseTask {
   }
 
   async getDependencies(): Promise<BaseTask[]> {
-    const buildTasks = await BuildTask.factory({
-      garden: this.garden,
-      log: this.log,
-      module: this.task.module,
-      force: this.forceBuild,
-    })
-
     const dg = await this.garden.getConfigGraph(this.log)
     const deps = await dg.getDependencies("run", this.getName(), false)
+
+    const buildTasks = flatten(
+      await Bluebird.map(deps.build, (module) => {
+        return BuildTask.factory({
+          garden: this.garden,
+          log: this.log,
+          module,
+          force: this.forceBuild,
+        })
+      })
+    )
 
     const deployTasks = deps.deploy.map((service) => {
       return new DeployTask({
