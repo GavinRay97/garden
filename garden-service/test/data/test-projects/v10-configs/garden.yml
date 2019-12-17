@@ -1,3 +1,4 @@
+# 0
 kind: Project
 name: test-project-v10-config-noop
 environments:
@@ -11,6 +12,7 @@ providers:
 
 ---
 
+# 1
 project:
   name: test-project-v10-config-nested
   environments:
@@ -22,6 +24,7 @@ project:
 
 ---
 
+# 2
 kind: Project
 name: test-project-v10-config-env-defaults
 variables:
@@ -43,6 +46,7 @@ environments:
 
 ---
 
+# 3
 kind: Project
 name: test-project-v10-config-local-openfaas
 environments:
@@ -52,6 +56,7 @@ providers:
 
 ---
 
+# 4
 kind: Project
 name: test-project-v10-config-local-openfaas-nested
 environments:
@@ -61,6 +66,7 @@ environments:
 
 ---
 
+# 5
 module:
   name: module-nested
   type: test
@@ -69,9 +75,35 @@ module:
 
 ---
 
+# 6
 kind: Module
 name: module-local-openfaas
 type: local-openfaas
 build:
   command: [echo, project]
 
+---
+
+# 7
+kind: Project
+name: test-project-v10-config-existing-openfaas-nested
+environments:
+  - name: local
+    providers:
+      - name: local-openfaas
+        gatewayUrl: bar
+      - name: openfaas
+        gatewayUrl: foo
+
+---
+
+# 8
+kind: Project
+name: test-project-v10-config-existing-openfaas
+environments:
+  - name: local
+providers:
+  - name: local-openfaas
+    gatewayUrl: bar
+  - name: openfaas
+    gatewayUrl: foo

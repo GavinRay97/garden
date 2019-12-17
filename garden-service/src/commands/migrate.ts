@@ -52,17 +52,17 @@ export class MigrateCommand extends Command<Args, Opts> {
 
   description = dedent`
     Scans the project for \`garden.yml\` configuration files and updates those that are not compatible with version v0.11 or greater.
-    By default the command prints the updated version to the terminal. You can optionally update the files in place with the \`write\` flag.
+    By default the command prints the updated versions to the terminal. You can optionally update the files in place with the \`write\` flag.
 
-    Note: This command does not validate the configs per se. It will simply try to convert a give configuration file so that
-    it is compatible with version v0.11 or greater, regardless of whether that file was ever valid Garden config. It is therefore
+    Note: This command does not validate the configs per se. It will simply try to convert a given configuration file so that
+    it is compatible with version v0.11 or greater, regardless of whether that file was ever a valid Garden config. It is therefore
     recommended that this is used on existing \`garden.yml\` files that were valid in version v0.10.x.
 
     Examples:
 
-        garden migrate              # scans all garden.yml files and prints the updated version along with the path to it.
-        garden migrate --write      # scans all garden.yml files writes the updated version to the file system.
-        garden migrate ./garden.yml # scans the provided garden.yml file and prints the updated version. Useful for piping the output to the file.
+        garden migrate              # scans all garden.yml files and prints the updated versions along with the paths to them.
+        garden migrate --write      # scans all garden.yml files and overwrites them with the updated versions.
+        garden migrate ./garden.yml # scans the provided garden.yml file and prints the updated version. Useful for redirecting the output to the file.
 
   `
 
@@ -91,22 +91,17 @@ export class MigrateCommand extends Command<Args, Opts> {
 
     // Iterate over configs and update specs if needed
     for (const configPath of configPaths) {
-      const updatedSpecs: any[] = []
-
-      const rawSpecs = await readYaml(configPath)
-      const original = cloneDeep(rawSpecs)
-
-      for (let spec of rawSpecs) {
-        spec = applyFlatStyle(spec)
-
-        removeLocalOpenFaas(spec)
-        removeEnvironmentDefaults(spec, configPath)
-
-        updatedSpecs.push(spec)
-      }
+      const specs = await readYaml(configPath)
+      const updatedSpecs = specs.map((spec) =>
+        [spec]
+          .map((s) => applyFlatStyle(s))
+          .map((s) => removeLocalOpenFaas(s))
+          .map((s) => removeEnvironmentDefaults(s, configPath))
+          .pop()
+      )
 
       // Nothing to do
-      if (isEqual(rawSpecs, original)) {
+      if (isEqual(specs, updatedSpecs)) {
         continue
       }
 
@@ -203,7 +198,7 @@ async function readYaml(path: string) {
 }
 
 /**
- * Convert to flat config style.
+ * Returns a spec with the flat config style.
  *
  * That is, this:
  * ```yaml
@@ -220,84 +215,108 @@ async function readYaml(path: string) {
  */
 function applyFlatStyle(spec: any) {
   if (spec.project) {
-    spec = {
+    const project = cloneDeep(spec.project)
+    return {
       kind: "Project",
-      ...spec.project,
+      ...project,
     }
   } else if (spec.module) {
-    spec = {
+    const module = cloneDeep(spec.module)
+    return {
       kind: "Module",
-      ...spec.module,
+      ...module,
     }
   }
-  return spec
+  return cloneDeep(spec)
 }
 
 /**
- * Change `local-openfaas` provider and module types to `openfaas`. Mutates spec.
+ * Returns a spec with `local-openfaas` set to `openfaas` at both the provider and module type level.
+ * Remove the `local-openfaas` provider if `openfaas` is already configured.
  */
 function removeLocalOpenFaas(spec: any) {
+  const clone = cloneDeep(spec)
   const isProject = spec.kind === "Project"
 
   // Remove local-openfaas from modules
   if (spec.type === "local-openfaas") {
-    spec.type = "openfaas"
+    clone.type = "openfaas"
   }
 
   // Remove local-openfaas from projects
   if (isProject) {
+    let hasOpenfaas = false
+
     // Provider nested under environment
-    for (const [envIdx, env] of spec.environments.entries()) {
-      if (!env.providers) {
-        continue
-      }
-      for (const [providerIdx, provider] of env.providers.entries()) {
-        if (provider.name === "local-openfaas") {
-          spec.environments[envIdx].providers[providerIdx].name = "openfaas"
+    if ((spec.environments || []).length > 0) {
+      for (const [envIdx, env] of spec.environments.entries()) {
+        if (!env.providers) {
+          continue
+        }
+
+        for (const [providerIdx, provider] of env.providers.entries()) {
+          hasOpenfaas = !!env.providers.find((p) => p.name === "openfaas")
+          if (provider.name === "local-openfaas" && hasOpenfaas) {
+            // openfaas provider is already configured so we remove the local-openfaas provider
+            clone.environments[envIdx].providers.splice(providerIdx, 1)
+          } else if (provider.name === "local-openfaas") {
+            // otherwise we rename it
+            clone.environments[envIdx].providers[providerIdx].name = "openfaas"
+          }
         }
       }
     }
 
     // Provider nested under environment
     if (spec.providers) {
+      hasOpenfaas = !!spec.providers.find((p) => p.name === "openfaas")
       for (const [providerIdx, provider] of spec.providers.entries()) {
-        if (provider.name === "local-openfaas") {
-          spec.providers[providerIdx].name = "openfaas"
+        if (provider.name === "local-openfaas" && hasOpenfaas) {
+          clone.providers.splice(providerIdx, 1)
+        } else if (provider.name === "local-openfaas") {
+          clone.providers[providerIdx].name = "openfaas"
         }
       }
     }
   }
+  return clone
 }
 
 /**
- * Remove `environmentDefaults` field and map its contents to their respective top-level keys
+ * Returns a spec with the `environmentDefaults` field removed and its contents mapped
+ * to their respective top-level keys.
  */
 function removeEnvironmentDefaults(spec: any, path: string) {
+  const clone = cloneDeep(spec)
+
   if (spec.environmentDefaults) {
     if (spec.environmentDefaults.varfile) {
       if (spec.varfile) {
         const msg = dedent`
-          Detected a project level \`varfile\` field with value ${spec.varfile} in config at path ${path}
+          Found a project level \`varfile\` field with value ${spec.varfile} in config at path ${path}
           when attempting to re-assign the \`varfile\` field under the
           \`environmentDefaults\` directive (with value ${spec.environmentDefaults.varfile}).
           Please resolve manually and then run this command again.
         `
         throw new ConfigurationError(msg, { path })
       } else {
-        spec.varfile = spec.environmentDefaults.varfile
+        clone.varfile = spec.environmentDefaults.varfile
       }
     }
     if (spec.environmentDefaults.variables) {
       // Merge variables
-      spec.variables = {
+      clone.variables = {
         ...(spec.variables || {}),
         ...spec.environmentDefaults.variables,
       }
     }
 
     if (spec.environmentDefaults.providers) {
-      spec.providers = [...(spec.providers || []), ...spec.environmentDefaults.providers]
+      const providers = cloneDeep(spec.providers) || []
+      const envProviders = cloneDeep(spec.environmentDefaults.providers)
+      clone.providers = [...providers, ...envProviders]
     }
-    delete spec.environmentDefaults
+    delete clone.environmentDefaults
   }
+  return clone
 }

@@ -26,7 +26,7 @@ describe("commands", () => {
     })
 
     after(async () => {
-      // await tmpDir.cleanup()
+      await tmpDir.cleanup()
     })
 
     context("convert config", () => {
@@ -199,6 +199,40 @@ describe("commands", () => {
           },
         })
       })
+      it("should remove local-openfaas provider if openfaas already configured", () => {
+        const openfaasExistingNested = result.updatedConfigs[0].specs[7]
+        const openfaasExisting = result.updatedConfigs[0].specs[8]
+        expect(openfaasExistingNested).to.eql({
+          kind: "Project",
+          name: "test-project-v10-config-existing-openfaas-nested",
+          environments: [
+            {
+              name: "local",
+              providers: [
+                {
+                  name: "openfaas",
+                  gatewayUrl: "foo",
+                },
+              ],
+            },
+          ],
+        })
+        expect(openfaasExisting).to.eql({
+          kind: "Project",
+          name: "test-project-v10-config-existing-openfaas",
+          environments: [
+            {
+              name: "local",
+            },
+          ],
+          providers: [
+            {
+              name: "openfaas",
+              gatewayUrl: "foo",
+            },
+          ],
+        })
+      })
       it("should convert modules in their own config files", () => {
         const modules = sortBy(result.updatedConfigs, "path").slice(1)
         expect(modules).to.eql([
@@ -258,7 +292,7 @@ describe("commands", () => {
             }),
           }),
         (err) => {
-          expect(err.message).to.include("Detected a project level `varfile` field")
+          expect(err.message).to.include("Found a project level `varfile` field")
         }
       )
     })
@@ -379,7 +413,27 @@ describe("commands", () => {
         build:
           command:
             - echo
-            - project\n
+            - project
+
+        ---
+
+        kind: Project
+        name: test-project-v10-config-existing-openfaas-nested
+        environments:
+          - name: local
+            providers:
+              - name: openfaas
+                gatewayUrl: foo
+
+        ---
+
+        kind: Project
+        name: test-project-v10-config-existing-openfaas
+        environments:
+          - name: local
+        providers:
+          - name: openfaas
+            gatewayUrl: foo\n
         `)
       })
     })
