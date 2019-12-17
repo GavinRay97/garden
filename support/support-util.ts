@@ -35,7 +35,6 @@ export async function spawn(cmd: string, args: string[], cwd?: string) {
 }
 
 function die() {
-  console.log("youooiis")
   for (const child of children) {
     !child.killed && child.kill()
   }

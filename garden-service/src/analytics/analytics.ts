@@ -157,7 +157,6 @@ export class AnalyticsHandler {
    * @memberof Analytics
    */
   async initialize() {
-    debugger
     const globalConf = await this.globalConfigStore.get()
     this.globalConfig = {
       ...this.globalConfig,
