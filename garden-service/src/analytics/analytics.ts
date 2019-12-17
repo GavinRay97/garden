@@ -157,6 +157,7 @@ export class AnalyticsHandler {
    * @memberof Analytics
    */
   async initialize() {
+    debugger
     const globalConf = await this.globalConfigStore.get()
     this.globalConfig = {
       ...this.globalConfig,
@@ -168,17 +169,19 @@ export class AnalyticsHandler {
     this.projectId = originName ? hasha(await vcs.getOriginName(), { algorithm: "sha256" }) : "unset"
 
     if (this.globalConfig.firstRun || this.globalConfig.showOptInMessage) {
-      printWarningMessage(
-        this.log,
-        dedent`
-        Thanks for installing Garden! We work hard to provide you with the best experience we can.
-        We collect some anonymized usage data while you use Garden. If you'd like to know more about what we collect
-        or you'd like to to opt-out, please read more at https://github.com/garden-io/garden/blob/master/README.md#Analytics`
-      )
+      if (!this.isCI) {
+        printWarningMessage(
+          this.log,
+          dedent`
+          Thanks for installing Garden! We work hard to provide you with the best experience we can.
+          We collect some anonymized usage data while you use Garden. If you'd like to know more about what we collect
+          or you'd like to to opt-out, please read more at https://github.com/garden-io/garden/blob/master/README.md#Analytics`
+        )
+      }
 
       this.globalConfig = {
         firstRun: false,
-        userId: "" ? uuidv4() : this.globalConfig.userId,
+        userId: this.globalConfig.userId || uuidv4(),
         optedIn: true,
         showOptInMessage: false,
       }
